@@ -1,19 +1,19 @@
 cmake_minimum_required(VERSION 3.9)
 
-add_executable(laines-term main.cpp)
+add_executable(nes-term main.cpp)
 
-target_link_libraries(laines-term
+target_link_libraries(nes-term
     PRIVATE
         TermOx
-        laines-lib
+        SimpleNES
 )
 
-target_compile_features(laines-term
+target_compile_features(nes-term
     PUBLIC
         cxx_std_17
 )
 
-target_compile_options(laines-term
+target_compile_options(nes-term
     PRIVATE
         -Wall
         -Wextra

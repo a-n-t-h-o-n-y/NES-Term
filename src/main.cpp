@@ -1,5 +1,6 @@
 #include <chrono>
 #include <fstream>
+#include <iostream>
 #include <map>
 #include <mutex>
 #include <optional>
@@ -10,21 +11,39 @@
 
 #include <termox/termox.hpp>
 
-#include <cartridge.hpp>
+#include "emulator.hpp"
+#include "termox/painter/color.hpp"
 
 namespace {
 
 constexpr auto nes_width  = 256;
 constexpr auto nes_height = 240;
 
+[[nodiscard]] auto custom_nes_palette() -> ox::Palette
+{
+    using ox::RGB;
+    return ox::make_palette(
+        RGB{0x666666}, RGB{0x002a88}, RGB{0x1412a7}, RGB{0x3b00a4},
+        RGB{0x5c007e}, RGB{0x6e0040}, RGB{0x6c0600}, RGB{0x561d00},
+        RGB{0x333500}, RGB{0x0b4800}, RGB{0x005200}, RGB{0x004f08},
+        RGB{0x00404d}, RGB{0x000000}, RGB{0x000000}, RGB{0x000000},
+        RGB{0xadadad}, RGB{0x155fd9}, RGB{0x4240ff}, RGB{0x7527fe},
+        RGB{0xa01acc}, RGB{0xb71e7b}, RGB{0xb53120}, RGB{0x994e00},
+        RGB{0x6b6d00}, RGB{0x388700}, RGB{0x0c9300}, RGB{0x008f32},
+        RGB{0x007c8d}, RGB{0x000000}, RGB{0x000000}, RGB{0x000000},
+        RGB{0xfffeff}, RGB{0x64b0ff}, RGB{0x9290ff}, RGB{0xc676ff},
+        RGB{0xf36aff}, RGB{0xfe6ecc}, RGB{0xfe8170}, RGB{0xea9e22},
+        RGB{0xbcbe00}, RGB{0x88d800}, RGB{0x5ce430}, RGB{0x45e082},
+        RGB{0x48cdde}, RGB{0x4f4f4f}, RGB{0x000000}, RGB{0x000000},
+        RGB{0xfffeff}, RGB{0xc0dfff}, RGB{0xd3d2ff}, RGB{0xe8c8ff},
+        RGB{0xfbc2ff}, RGB{0xfec4ea}, RGB{0xfeccc5}, RGB{0xf7d8a5},
+        RGB{0xe4e594}, RGB{0xcfef96}, RGB{0xbdf4ab}, RGB{0xb3f3cc},
+        RGB{0xb5ebf2}, RGB{0xb8b8b8}, RGB{0x000000}, RGB{0x000000});
+}
+
 }  // namespace
 
 namespace oxnes {
-
-// pointer to u32 pixels, translate that immediately to coords and colors, then
-// store it within in the widget. Then at the end of the CPU::run_frame you can
-// just paint that.
-// loading the cart will have to happen.
 
 class NES_widget
     : public ox::
@@ -39,40 +58,50 @@ class NES_widget
     using Clock_t = std::chrono::high_resolution_clock;
 
    public:
-    NES_widget()
+    NES_widget(std::string const& rom_path)
     {
         using namespace ox::pipe;
 
-        ox::Terminal::set_palette(ox::nes::palette);
+        ox::Terminal::set_palette(custom_nes_palette());
+
         *this | fixed_width(display_width) | fixed_height(display_height) |
             strong_focus() | on_resize([this](auto area, auto) {
                 too_small_ =
                     area.width < display_width || area.height < display_height;
             });
 
-        // emulator_.register_draw_callback([this, previous_time =
-        // Clock_t::now()](
-        //                                      FrameBuffer const& buf) mutable
-        //                                      {
-        //     constexpr auto zero   = Clock_t::duration{0};
-        //     constexpr auto period = std::chrono::microseconds{16'667};  //
-        //     60fps auto const to_wait    = period - (Clock_t::now() -
-        //     previous_time); if (to_wait > zero)
-        //         std::this_thread::sleep_for(to_wait);
-        //     previous_time = Clock_t::now();
-        //     next_buffer_  = buf;
-        // });
+        emulator_.register_draw_callback(
+            [this, previous_time =
+                       Clock_t::now()](sn::Framebuffer const& buf) mutable {
+                constexpr auto zero = Clock_t::duration{0};
+                constexpr auto period =
+                    std::chrono::microseconds{16'639};  // 60.0988139fps
+                auto const to_wait = period - (Clock_t::now() - previous_time);
+                if (to_wait > zero)
+                    std::this_thread::sleep_for(to_wait);
+                previous_time = Clock_t::now();
+                next_buffer_  = buf;
+            });
 
-        // loop_.run_async([this](auto& queue) {
-        // while (!next_buffer_.has_value())
-        //     emulator_.tick();  // This can assign to next_buffer_.
+        emulator_.set_controller1_read_callback(
+            [this] { return controller1_.read(); });
+        emulator_.set_controller2_read_callback(
+            [this] { return controller2_.read(); });
+        emulator_.set_controller_write_callback([this](sn::Byte b) {
+            controller1_.strobe(b);
+            controller2_.strobe(b);
+        });
 
-        // queue.append(
-        //     ox::Custom_event{[this, buf = std::move(*next_buffer_)] {
-        //         this->handle_next_frame(std::move(buf));
-        //     }});
-        // next_buffer_ = std::nullopt;
-        // });
+        emulator_.load_cartridge(rom_path);
+
+        loop_.run_async([this](auto& queue) {
+            while (!next_buffer_.has_value())
+                emulator_.step();  // Might set next_buffer_
+
+            queue.append(ox::Custom_event{
+                [this, buf = *next_buffer_] { this->handle_next_frame(buf); }});
+            next_buffer_ = std::nullopt;
+        });
     }
 
    protected:
@@ -90,31 +119,92 @@ class NES_widget
 
     auto key_press_event(ox::Key k) -> bool override
     {
-        // auto const button = key_to_button(k);
-        // if (button.has_value())
-        //     emulator_.button_pressed(*button);
+        // TODO key to button function for each player
+        switch (k) {
+            using ox::Key;
+            case Key::z: controller1_.press(Controller::Button::A); break;
+            case Key::x: controller1_.press(Controller::Button::B); break;
+            case Key::Backspace:
+                controller1_.press(Controller::Button::Select);
+                break;
+            case Key::Enter:
+                controller1_.press(Controller::Button::Start);
+                break;
+            case Key::Arrow_up:
+                controller1_.press(Controller::Button::Up);
+                break;
+            case Key::Arrow_down:
+                controller1_.press(Controller::Button::Down);
+                break;
+            case Key::Arrow_left:
+                controller1_.press(Controller::Button::Left);
+                break;
+            case Key::Arrow_right:
+                controller1_.press(Controller::Button::Right);
+                break;
+            default: break;
+        }
         return Base_t::key_press_event(k);
     }
 
     auto key_release_event(ox::Key k) -> bool override
     {
-        // auto const button = key_to_button(k);
-        // if (button.has_value())
-        //     emulator_.button_released(*button);
+        // TODO key to button function for each player
+        switch (k) {
+            using ox::Key;
+            case Key::z: controller1_.release(Controller::Button::A); break;
+            case Key::x: controller1_.release(Controller::Button::B); break;
+            case Key::Backspace:
+                controller1_.release(Controller::Button::Select);
+                break;
+            case Key::Enter:
+                controller1_.release(Controller::Button::Start);
+                break;
+            case Key::Arrow_up:
+                controller1_.release(Controller::Button::Up);
+                break;
+            case Key::Arrow_down:
+                controller1_.release(Controller::Button::Down);
+                break;
+            case Key::Arrow_left:
+                controller1_.release(Controller::Button::Left);
+                break;
+            case Key::Arrow_right:
+                controller1_.release(Controller::Button::Right);
+                break;
+            default: break;
+        }
         return Base_t::key_release_event(k);
     }
 
    private:
+    Emulator emulator_;
+    Controller controller1_;
+    Controller controller2_;
+
     bool too_small_ = true;
-    // Gameboy emulator_;
     ox::Event_loop loop_;
-    // std::optional<::FrameBuffer> next_buffer_ = std::nullopt;
+    std::optional<sn::Framebuffer> next_buffer_ = std::nullopt;
 
    private:
-    // void handle_next_frame(FrameBuffer buf)
-    // {
-    //     this->Base_t::reset(translate_to_pairs(buf));
-    // }
+    void handle_next_frame(sn::Framebuffer const& buf)
+    {
+        this->Base_t::reset(translate_to_pairs(buf));
+    }
+
+    [[nodiscard]] static auto translate_to_pairs(sn::Framebuffer const& buf)
+        -> std::vector<std::pair<Base_t::Coordinate, ox::Color>>
+    {
+        auto result = std::vector<std::pair<Base_t::Coordinate, ox::Color>>{};
+        result.reserve(nes_width * nes_height);
+        for (auto x = 0; x < nes_width; ++x) {
+            for (auto y = 0; y < nes_height; ++y) {
+                result.push_back(
+                    {{x, Base_t::boundary().north - y}, ox::Color{buf[x][y]}});
+            }
+        }
+        return result;
+    }
 
     /// Translate ox::Key to gameboy button, if there is a representation.
     // [[nodiscard]] static auto key_to_button(ox::Key k)
@@ -133,41 +223,19 @@ class NES_widget
     //         default: return std::nullopt;
     //     }
     // }
-
-    // [[nodiscard]] static auto translate_to_pairs(FrameBuffer const& buf)
-    //     -> std::vector<std::pair<Base_t::Coordinate, ox::Color>>
-    // {
-    //     auto result = std::vector<std::pair<Base_t::Coordinate,
-    //     ox::Color>>{}; for (auto x = 0; x < nes_width; ++x) {
-    //         for (auto y = 0; y < nes_height; ++y) {
-    //             result.push_back({{x, Base_t::boundary().north - y},
-    //                               to_color(buf.get_pixel(x, y))});
-    //         }
-    //     }
-    //     return result;
-    // }
-
-    // [[nodiscard]] static auto to_color(::Color c) -> ox::Color
-    // {
-    //     switch (c) {
-    //         case ::Color::White: return ox::gameboy::Green_4;
-    //         case ::Color::LightGray: return ox::gameboy::Green_3;
-    //         case ::Color::DarkGray: return ox::gameboy::Green_2;
-    //         case ::Color::Black: return ox::gameboy::Green_1;
-    //     }
-    // }
 };
 
 }  // namespace oxnes
 
 int main(int argc, char* argv[])
 {
-    // auto cli_options = get_cli_options(argc, argv);
-    // auto cartridge   = get_cartridge(read_bytes(cli_options.filename),
-    //                                load_state(cli_options.filename));
-    // TODO load cart
-    Cartridge::load("~/Downloads/ROMs/Super Mario Bros. 3 (USA) (Rev 1).nes");
+    if (argc < 2) {
+        std::cerr << "Please pass rom path as first parameter.\n";
+        return 1;
+    }
+
+    auto const rom_path = argv[1];
 
     return ox::System{ox::Mouse_mode::Basic, ox::Key_mode::Raw}
-        .run<ox::Float_2d<oxnes::NES_widget>>();
+        .run<ox::Float_2d<oxnes::NES_widget>>(rom_path);
 }
