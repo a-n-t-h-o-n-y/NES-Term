@@ -49,8 +49,8 @@ Sound is not implemented.
 Only Player 1 is implemented. Open an issue if you can think of a good keyboard
 layout for two players.
 
-- Arrows keys
-- A Button: z
-- B Button: x
-- Start:    Enter
-- Select:   Backspace
+- D-Pad:    __Arrows keys__
+- A Button: __z__
+- B Button: __x__
+- Start:    __Enter__
+- Select:   __Backspace__
