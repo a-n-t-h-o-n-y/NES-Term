@@ -104,61 +104,17 @@ class NES_widget
    protected:
     auto key_press_event(ox::Key k) -> bool override
     {
-        // TODO key to button function for each player
-        switch (k) {
-            using ox::Key;
-            case Key::z: controller1_.press(Controller::Button::A); break;
-            case Key::x: controller1_.press(Controller::Button::B); break;
-            case Key::Backspace:
-                controller1_.press(Controller::Button::Select);
-                break;
-            case Key::Enter:
-                controller1_.press(Controller::Button::Start);
-                break;
-            case Key::Arrow_up:
-                controller1_.press(Controller::Button::Up);
-                break;
-            case Key::Arrow_down:
-                controller1_.press(Controller::Button::Down);
-                break;
-            case Key::Arrow_left:
-                controller1_.press(Controller::Button::Left);
-                break;
-            case Key::Arrow_right:
-                controller1_.press(Controller::Button::Right);
-                break;
-            default: break;
-        }
+        if (auto const p1 = p1_key_to_button(k); p1)
+            controller1_.press(*p1);
+        // FIXME Can't think up a good set of keys for player2
         return Base_t::key_press_event(k);
     }
 
     auto key_release_event(ox::Key k) -> bool override
     {
-        // TODO key to button function for each player
-        switch (k) {
-            using ox::Key;
-            case Key::z: controller1_.release(Controller::Button::A); break;
-            case Key::x: controller1_.release(Controller::Button::B); break;
-            case Key::Backspace:
-                controller1_.release(Controller::Button::Select);
-                break;
-            case Key::Enter:
-                controller1_.release(Controller::Button::Start);
-                break;
-            case Key::Arrow_up:
-                controller1_.release(Controller::Button::Up);
-                break;
-            case Key::Arrow_down:
-                controller1_.release(Controller::Button::Down);
-                break;
-            case Key::Arrow_left:
-                controller1_.release(Controller::Button::Left);
-                break;
-            case Key::Arrow_right:
-                controller1_.release(Controller::Button::Right);
-                break;
-            default: break;
-        }
+        if (auto const p1 = p1_key_to_button(k); p1)
+            controller1_.release(*p1);
+        // FIXME Can't think up a good set of keys for player2
         return Base_t::key_release_event(k);
     }
 
@@ -190,23 +146,23 @@ class NES_widget
         return result;
     }
 
-    /// Translate ox::Key to gameboy button, if there is a representation.
-    // [[nodiscard]] static auto key_to_button(ox::Key k)
-    //     -> std::optional<::GbButton>
-    // {
-    //     using ox::Key;
-    //     switch (k) {
-    //         case Key::Arrow_up: return ::GbButton::Up;
-    //         case Key::Arrow_down: return ::GbButton::Down;
-    //         case Key::Arrow_left: return ::GbButton::Left;
-    //         case Key::Arrow_right: return ::GbButton::Right;
-    //         case Key::z: return ::GbButton::A;
-    //         case Key::x: return ::GbButton::B;
-    //         case Key::Enter: return ::GbButton::Start;
-    //         case Key::Backspace: return ::GbButton::Select;
-    //         default: return std::nullopt;
-    //     }
-    // }
+    /// Translate ox::Key to nes button, if there is a representation.
+    [[nodiscard]] static auto p1_key_to_button(ox::Key k)
+        -> std::optional<Controller::Button>
+    {
+        switch (k) {
+            using ox::Key;
+            case Key::z: return Controller::Button::A;
+            case Key::x: return Controller::Button::B;
+            case Key::Backspace: return Controller::Button::Select;
+            case Key::Enter: return Controller::Button::Start;
+            case Key::Arrow_up: return Controller::Button::Up;
+            case Key::Arrow_down: return Controller::Button::Down;
+            case Key::Arrow_left: return Controller::Button::Left;
+            case Key::Arrow_right: return Controller::Button::Right;
+            default: return std::nullopt;
+        }
+    }
 };
 
 struct App : ox::Float_2d<NES_widget> {

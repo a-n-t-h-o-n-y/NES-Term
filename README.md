@@ -35,6 +35,12 @@ least this size, the display will be scalled to a lower resolution. It is
 recommended to make the font size much smaller in order to get the full
 resolution(ctrl + (plus/minus) changes font size on most terminals).
 
+<p align="center">
+  <img src="docs/low-res.png">
+</p>
+
+Lower resolution scalling.
+
 ## Controls
 
 - Arrows keys
