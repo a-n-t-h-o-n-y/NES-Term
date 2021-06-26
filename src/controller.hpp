@@ -4,7 +4,7 @@
 #include <mutex>
 #include <type_traits>
 
-namespace oxnes {
+namespace nesterm {
 
 using Byte = std::uint8_t;
 
@@ -71,5 +71,5 @@ class Controller {
     std::mutex mtx_;
 };
 
-}  // namespace oxnes
+}  // namespace nesterm
 #endif  // NES_TERM_CONTROLLER_HPP

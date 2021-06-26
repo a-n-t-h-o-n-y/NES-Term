@@ -43,14 +43,14 @@ constexpr auto nes_height = 240;
 
 }  // namespace
 
-namespace oxnes {
+namespace nesterm {
 
 class NES_widget
     : public ox::
           Color_graph_static_bounds<int, 0, nes_width - 1, nes_height - 1, 0> {
    private:
-    static constexpr auto display_width  = nes_width;
-    static constexpr auto display_height = nes_height / 2;
+    static constexpr auto display_width  = nes_width - 1;
+    static constexpr auto display_height = (nes_height - 1) / 2;
 
     using Base_t =
         Color_graph_static_bounds<int, 0, nes_width - 1, nes_height - 1, 0>;
@@ -64,18 +64,15 @@ class NES_widget
 
         ox::Terminal::set_palette(custom_nes_palette());
 
-        *this | fixed_width(display_width) | fixed_height(display_height) |
-            strong_focus() | on_resize([this](auto area, auto) {
-                too_small_ =
-                    area.width < display_width || area.height < display_height;
-            });
+        *this | maximum_width(display_width) | maximum_height(display_height) |
+            strong_focus();
 
         emulator_.register_draw_callback(
             [this, previous_time =
                        Clock_t::now()](sn::Framebuffer const& buf) mutable {
                 constexpr auto zero = Clock_t::duration{0};
                 constexpr auto period =
-                    std::chrono::microseconds{16'639};  // 60.0988139fps
+                    std::chrono::microseconds{16'639};  // 60.0988139 fps
                 auto const to_wait = period - (Clock_t::now() - previous_time);
                 if (to_wait > zero)
                     std::this_thread::sleep_for(to_wait);
@@ -105,18 +102,6 @@ class NES_widget
     }
 
    protected:
-    auto paint_event(ox::Painter& p) -> bool override
-    {
-        if (too_small_) {
-            p.put(U"Display is too small.", {0, 0});
-            p.put(U"Make the font size smaller", {0, 1});
-            p.put(U"Or expand the terminal window.", {0, 2});
-            return true;
-        }
-        else
-            return Base_t::paint_event(p);
-    }
-
     auto key_press_event(ox::Key k) -> bool override
     {
         // TODO key to button function for each player
@@ -182,7 +167,6 @@ class NES_widget
     Controller controller1_;
     Controller controller2_;
 
-    bool too_small_ = true;
     ox::Event_loop loop_;
     std::optional<sn::Framebuffer> next_buffer_ = std::nullopt;
 
@@ -225,17 +209,30 @@ class NES_widget
     // }
 };
 
-}  // namespace oxnes
+struct App : ox::Float_2d<NES_widget> {
+    App(std::string const& rom_path) : ox::Float_2d<NES_widget>{rom_path}
+    {
+        using namespace ox::pipe;
+        constexpr auto background = ox::Color{14};
+        *this | direct_focus() | forward_focus(this->widget.widget);
+        this->buffer_1 | bg(background);
+        this->buffer_2 | bg(background);
+        this->widget.buffer_1 | bg(background);
+        this->widget.buffer_2 | bg(background);
+    }
+};
+
+}  // namespace nesterm
 
 int main(int argc, char* argv[])
 {
     if (argc < 2) {
-        std::cerr << "Please pass rom path as first parameter.\n";
+        std::cerr << "Please pass ROM path as first parameter.\n";
         return 1;
     }
 
     auto const rom_path = argv[1];
 
     return ox::System{ox::Mouse_mode::Basic, ox::Key_mode::Raw}
-        .run<ox::Float_2d<oxnes::NES_widget>>(rom_path);
+        .run<nesterm::App>(rom_path);
 }

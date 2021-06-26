@@ -15,7 +15,7 @@
 
 #include "controller.hpp"
 
-namespace oxnes {
+namespace nesterm {
 
 class Emulator {
    public:
@@ -125,5 +125,5 @@ class Emulator {
     }
 };
 
-}  // namespace oxnes
+}  // namespace nesterm
 #endif  // NES_TERM_EMULATOR_HPP

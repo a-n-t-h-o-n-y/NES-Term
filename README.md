@@ -12,23 +12,28 @@ Terminal frontend for [SimpleNES](https://github.com/amhndu/SimpleNES) Emulator.
 
 ## Build
 
-Relies on cmake to generate build files, `nes-term` target is created. two git
-submodules are used, make sure to run `git submodule update --init` after
-cloning.
+Relies on cmake to generate build files for the `nes-term` target. git
+submodules are used; run `git submodule update --init` after cloning.
 
 ## Running
 
-Can be run by specifying the rom file as the first argument when launching from
-the terminal.
+The emulator can be run a game by specifying the ROM file as the first argument
+when launching from the terminal.
 
 Root privileges are required for proper keyboard input in the terminal, key
-release events cannot be accessed without opening the console as a file.
+release events cannot be accessed without opening the console as a file, which
+requires root.
 
 From the build directory:
 
 `sudo ./src/nes-term ~/location/of/ROM/file`
 
 The release build seems to run fine at 60fps; debug will be slow 🐌
+
+The NES has a resolution of 256x240, if your terminal is not expanded to at
+least this size, the display will be scalled to a lower resolution. It is
+recommended to make the font size much smaller in order to get the full
+resolution(ctrl + (plus/minus) changes font size on most terminals).
 
 ## Controls
 
