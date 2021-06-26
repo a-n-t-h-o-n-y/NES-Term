@@ -1,6 +1,7 @@
 # NES Term [+..••]
 
-Terminal frontend for [SimpleNES](https://github.com/amhndu/SimpleNES) Emulator.
+Terminal frontend for the [SimpleNES](https://github.com/amhndu/SimpleNES)
+Emulator.
 
 <p align="center">
   <img src="docs/mario.png">
@@ -17,7 +18,7 @@ submodules are used; run `git submodule update --init` after cloning.
 
 ## Running
 
-The emulator can be run a game by specifying the ROM file as the first argument
+The emulator can run a game by specifying the ROM file as the first argument
 when launching from the terminal.
 
 Root privileges are required for proper keyboard input in the terminal, key
@@ -42,6 +43,9 @@ resolution(ctrl + (plus/minus) changes font size on most terminals).
 Lower resolution scalling.
 
 ## Controls
+
+Only Player 1 is implemented. Open an issue if you can think of a good keyboard
+layout for two players.
 
 - Arrows keys
 - A Button: z
