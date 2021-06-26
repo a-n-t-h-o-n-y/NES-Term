@@ -1,7 +1,7 @@
 # NES Term [+..••]
 
 Terminal frontend for the [SimpleNES](https://github.com/amhndu/SimpleNES)
-Emulator.
+Emulator, built with [TermOx](https://github.com/a-n-t-h-o-n-y/TermOx).
 
 <p align="center">
   <img src="docs/mario.png">
@@ -16,7 +16,7 @@ Emulator.
 Relies on cmake to generate build files for the `nes-term` target. git
 submodules are used; run `git submodule update --init` after cloning.
 
-## Running
+## Run
 
 The emulator can run a game by specifying the ROM file as the first argument
 when launching from the terminal.
@@ -41,6 +41,8 @@ resolution(ctrl + (plus/minus) changes font size on most terminals).
 </p>
 
 Lower resolution scalling.
+
+Sound is not implemented.
 
 ## Controls
 
