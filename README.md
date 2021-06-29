@@ -32,7 +32,7 @@ From the build directory:
 The release build seems to run fine at 60fps; debug will be slow 🐌
 
 The NES has a resolution of 256x240, if your terminal is not expanded to at
-least this size, the display will be scalled to a lower resolution. It is
+least this size, the display will be scaled to a lower resolution. It is
 recommended to make the font size much smaller in order to get the full
 resolution(ctrl + (plus/minus) changes font size on most terminals).
 
